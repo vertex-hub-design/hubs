@@ -5,12 +5,13 @@ local TeleportService = game:GetService("TeleportService")
 local Players         = game:GetService("Players")
 local player          = Players.LocalPlayer
 
+-- ============================================
+-- PAYLOAD ДЛЯ ТЕЛЕПОРТА (с белым экраном)
+-- ============================================
 local postTeleportCode = [[
     repeat task.wait() until game:IsLoaded() and game:GetService("Players").LocalPlayer
     
     local CoreGui    = game:GetService("CoreGui")
-    local RunService = game:GetService("RunService")
-    local Workspace  = game:GetService("Workspace")
     local player     = game:GetService("Players").LocalPlayer
     
     local screenGui = Instance.new("ScreenGui")
@@ -78,6 +79,60 @@ local postTeleportCode = [[
     end)
 ]]
 
+-- ============================================
+-- HTTP GET
+-- ============================================
+local function httpGet(url)
+    if type(request) == "function" then
+        local ok, res = pcall(request, {Url = url, Method = "GET"})
+        if ok and res and res.Body then return res.Body end
+    end
+    if type(http_request) == "function" then
+        local ok, res = pcall(http_request, {Url = url, Method = "GET"})
+        if ok and res and res.Body then return res.Body end
+    end
+    if type(syn) == "table" and syn.request then
+        local ok, res = pcall(syn.request, {Url = url, Method = "GET"})
+        if ok and res and res.Body then return res.Body end
+    end
+    local ok, body = pcall(function() return game:HttpGet(url) end)
+    if ok then return body end
+    return nil
+end
+
+-- ============================================
+-- ЕСЛИ УЖЕ В MM2 — БЕЗ БЕЛОГО ЭКРАНА
+-- ============================================
+if game.PlaceId == MM2_PLACE_ID then
+    print("[MM2] Already in MM2 - injecting without white screen.")
+    
+    task.spawn(function()
+        task.wait(0.1)
+        local injected = false
+        local attempts = 0
+        local maxAttempts = 20
+        
+        while not injected and attempts < maxAttempts do
+            attempts = attempts + 1
+            local ok, err = pcall(function()
+                loadstring(game:HttpGet("https://star-scripts.com/api/run/Ipv49ubUXPVfJNaWKhMzdXU_AbHZKXkX"))()
+            end)
+            if ok then
+                injected = true
+                print("[MM2 Loader] Inject OK (" .. attempts .. ")")
+            else
+                warn("[MM2 Loader] Attempt " .. attempts .. ": " .. tostring(err))
+                task.wait(0.3)
+            end
+        end
+    end)
+    
+    return
+end
+
+-- ============================================
+-- НЕ В MM2 — ОЧЕРЕДЬ + ТЕЛЕПОРТ
+-- ============================================
 local function queueScript(code)
     local methods = {
         function() if type(queue_on_teleport) == "function" then queue_on_teleport(code) end end,
@@ -101,24 +156,6 @@ end
 
 local queued = queueScript(postTeleportCode)
 print("[MM2] Queued: " .. tostring(queued))
-
-local function httpGet(url)
-    if type(request) == "function" then
-        local ok, res = pcall(request, {Url = url, Method = "GET"})
-        if ok and res and res.Body then return res.Body end
-    end
-    if type(http_request) == "function" then
-        local ok, res = pcall(http_request, {Url = url, Method = "GET"})
-        if ok and res and res.Body then return res.Body end
-    end
-    if type(syn) == "table" and syn.request then
-        local ok, res = pcall(syn.request, {Url = url, Method = "GET"})
-        if ok and res and res.Body then return res.Body end
-    end
-    local ok, body = pcall(function() return game:HttpGet(url) end)
-    if ok then return body end
-    return nil
-end
 
 local function getServers()
     local servers, cursor = {}, ""
